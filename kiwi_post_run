@@ -1,0 +1,188 @@
+#!/bin/sh -eu
+#
+# Copyright (c) 2018 SUSE LLC
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+echo "███████████████████████████████████████████████████████████████"
+echo "█                                                             █"
+echo "█  containment-rpm-pxe: Turn your KIWI PXE images into RPMs   █"
+echo "█        https://github.com/openSUSE/container-rpm-pxe        █"
+echo "█                                                             █"
+echo "███████████████████████████████████████████████████████████████"
+
+get_xml_data() {
+  echo $(xmllint --xpath "${1}" ${2} | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/\//\\\//g')
+}
+
+: ${TOPDIR:=/usr/src/packages}
+
+TARGET_DIR=${TOPDIR}/KIWI
+RPM_SOURCE_DIR=${TOPDIR}/SOURCES
+FILES_DIR=/usr/lib/build
+
+cd $TARGET_DIR
+
+echo "INFO: Looking for an image..."
+SOURCE=$(find . -exec basename {} \;|grep -E '^.+\.tar\.[^\.]+$';true)
+if [ "${SOURCE}" == "" ]; then
+  echo "ERROR: No image files found!"
+  exit 1
+elif [ $(echo "${SOURCE}"|wc -l) -gt 1 ]; then
+  echo "ERROR: More than one image file found!"
+  exit 1
+fi
+echo "INFO: Image found at ${SOURCE}"
+
+# extract name and version from the source tarball
+set -- $(echo $SOURCE | sed -r 's/([^\.]+)\.([^-]+)-([^-]+).([^-]+)-?(cpio)?.tar\.(.+)/\1 \2 \3 \4 \5 \6/')
+NAME="${1}"
+ARCH="${2}"
+VERSION="${3}"
+RELEASE="${4}"
+TYPE="${5}"
+set +u
+if [ -z ${6} ]; then
+  EXTENSION=${TYPE}
+  TYPE="pxe"
+else
+  EXTENSION="${6}"
+fi
+set -u
+
+# Some other required variables
+RELEASE=$(date +%Y%m%d%H%M%S)
+YEAR=$(date +%Y)
+
+# Read properties from rpm-properties.xml
+PROPERTIES_XML="${RPM_SOURCE_DIR}/rpm-properties.xml"
+if [ ! -f ${PROPERTIES_XML} ]; then
+  echo "ERROR: No ${PROPERTIES_XML} file. Make sure you have one in your package"
+  exit 1
+fi
+SUMMARY=$(get_xml_data "string(//props/summary)" ${PROPERTIES_XML})
+DESCRIPTION=$(get_xml_data "string(//props/description)" ${PROPERTIES_XML})
+LICENSE=$(get_xml_data "string(//props/license)" ${PROPERTIES_XML})
+URL=$(get_xml_data "string(//props/url)" ${PROPERTIES_XML})
+GROUP=$(get_xml_data "string(//props/group)" ${PROPERTIES_XML})
+PROVIDES=$(get_xml_data "string(//props/provides)" ${PROPERTIES_XML})
+EXCLUDEARCHES=$(get_xml_data "string(//props/excludearches)" ${PROPERTIES_XML})
+
+# Print values to stdout
+echo "=========================================="
+echo "source: ${SOURCE}"
+echo "name: ${NAME}"
+echo "version: ${VERSION}"
+echo "release: ${RELEASE}"
+echo "type: ${TYPE}"
+echo "extension: ${EXTENSION}"
+echo "=========================================="
+echo "summary: ${SUMMARY}"
+echo "description: ${DESCRIPTION}"
+echo "license: ${LICENSE}"
+echo "url: ${URL}"
+echo "group: ${GROUP}"
+echo "provides: ${PROVIDES}"
+echo "excludeArches: ${EXCLUDEARCHES}"
+echo "=========================================="
+
+
+echo "INFO: Uncompressing image created by KIWI..."
+if [ "${EXTENSION}" == 'bz2' ]; then
+  tar -xvjf ${SOURCE}
+elif  [ "${EXTENSION}" == 'xz' ]; then
+  tar -xvJf ${SOURCE}
+else
+  echo "ERROR: Unrecognized compression format!"
+  exit 1
+fi
+
+echo "INFO: Detecting initrd..."
+if [ "${TYPE}" == "cpio" ]; then
+  echo "INFO: cpio image, converting initrd..."
+  INITRDGZ=`ls ${NAME}.*-${VERSION}.gz | head -1`
+  INITRD=${INITRDGZ%.gz}.xz
+  gzip -cd ${INITRDGZ} | xz --check=crc32 -c9 > ${INITRD}
+else
+  INITRD=`ls ${NAME}.*-${VERSION}.initrd.xz`
+fi
+INITRDBASE=$(basename $INITRD)
+echo "INFO: initrd detected at ${INITRDBASE}"
+
+echo "INFO: Detecting kernel..."
+if [ "${TYPE}" == "cpio" ]; then
+  KERNEL=`ls ${NAME}.*-${VERSION}.kernel.*-default | head -1`
+else 
+  KERNEL=`ls ${NAME}.*-${VERSION}-*-default.kernel | head -1`
+fi
+KERNELBASE=$(basename $KERNEL)
+echo "INFO: Kernel at ${KERNELBASE}"
+
+echo "INFO: Standarizing kernel and initrd filenames and moving them to ${RPM_SOURCE_DIR}"
+mv ${KERNELBASE} ${RPM_SOURCE_DIR}/vmlinuz0
+mv ${INITRD} ${RPM_SOURCE_DIR}/initrd0.img
+
+echo "INFO: Generating SPEC..."
+if [ "${URL}" != "" ]; then
+  URL="Url:            ${URL}"
+fi
+if [ "${PROVIDES}" != "" ]; then
+  RPM_PROVIDES=""
+  for PROVIDE in ${PROVIDES}; do
+    RPM_PROVIDES="${RPM_PROVIDES}Provides:       ${PROVIDE}\n"
+  done
+fi
+if [ "${EXCLUDEARCHES}" != "" ]; then
+  RPM_EXCLUDEARCHES=""
+  for EXCLUDEARCH in ${EXCLUDEARCHES}; do
+    RPM_EXCLUDEARCHES="${RPM_EXCLUDEARCHES}ExcludeArch:    ${EXCLUDEARCH}\n"
+  done
+fi
+sed -e "s/__NAME__/${NAME}/g" \
+    -e "s/__SUMMARY__/${SUMMARY}/g" \
+    -e "s/__DESCRIPTION__/${DESCRIPTION}/g" \
+    -e "s/__LICENSE__/${LICENSE}/g" \
+    -e "s/__URL__/${URL}/g" \
+    -e "s/__GROUP__/${GROUP}/g" \
+    -e "s/__VERSION__/${VERSION}/g" \
+    -e "s/__RELEASE__/${RELEASE}/g" \
+    -e "s/__PROVIDES__/${RPM_PROVIDES}/g" \
+    -e "s/__EXCLUDEARCH__/${RPM_EXCLUDEARCHES}/g" \
+    -e "s/__YEAR__/${YEAR}/g" \
+    < ${FILES_DIR}/image.spec.in \
+    > ${FILES_DIR}/image.spec
+echo "INFO: Adding changelog to the SPEC..."
+/.build/changelog2spec --target rpm --file ${RPM_SOURCE_DIR}/${NAME}.changes >> ${FILES_DIR}/image.spec
+echo "INFO: SPEC to be used:"
+echo "=========================================="
+cat ${FILES_DIR}/image.spec
+echo "=========================================="
+
+echo "INFO: Building RPM packages..."
+rpmbuild -ba ${FILES_DIR}/image.spec
+
+# required for the BS to find the rpm, because it is
+# a "non-standard result file for KIWI"
+mkdir -p ${TOPDIR}/OTHER
+ARCH_RPM="${TOPDIR}/RPMS/noarch/${NAME}-${VERSION}-${RELEASE}.noarch.rpm"
+SRC_RPM="${TOPDIR}/SRPMS/${NAME}-${VERSION}-${RELEASE}.src.rpm"
+echo "INFO: Copying ${ARCH_RPM} to ${TOPDIR}/OTHER/"
+mv ${ARCH_RPM} ${TOPDIR}/OTHER/
+echo "INFO: Copying ${SRC_RPM} to ${TOPDIR}/OTHER/"
+mv ${SRC_RPM} ${TOPDIR}/OTHER/
