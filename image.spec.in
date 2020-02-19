@@ -1,7 +1,7 @@
 #
 # spec file for package __NAME__
 #
-# Copyright (c) __YEAR__ SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) __YEAR__ SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -12,22 +12,22 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
+# Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
-# needsrootforbuild
 # needsbinariesforbuild
+# needsrootforbuild
 
-__URL__
+
 Name:           __NAME__
-Summary:        __SUMMARY__
 Version:        __VERSION__
 Release:        __RELEASE__
-Group:          __GROUP__
+Summary:        __SUMMARY__
 License:        __LICENSE__
+Group:          __GROUP__
+__URL__
 Source0:        vmlinuz0
 Source1:        initrd0.img
 Source2:        license.txt
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 BuildArch:      noarch
 __EXCLUDEARCH__
 __PROVIDES__
@@ -36,7 +36,7 @@ __PROVIDES__
 __DESCRIPTION__
 
 %prep
-%setup -T -c %name
+%setup -q -T -c %{name}
 
 %build
 # empty no compile job
@@ -49,12 +49,9 @@ mkdir -p %{buildroot}/srv/pxe-default-image
 install -p -m 644 vmlinuz0 %{buildroot}/srv/pxe-default-image/vmlinuz0
 install -p -m 644 initrd0.img %{buildroot}/srv/pxe-default-image/initrd0.img
 
-%clean
-rm -rf $RPM_BUILD_ROOT
-
 %files
 %defattr(644,root,root)
-%doc license.txt
+%license license.txt
 %dir %attr(755, root, root) /srv/pxe-default-image
 %attr(644, root, root) /srv/pxe-default-image/*
 
