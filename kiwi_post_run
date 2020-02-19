@@ -1,188 +1,268 @@
 #!/bin/bash -eu
 #
-# Copyright (c) 2018 SUSE LLC
+# Copyright (c) 2018-2020 SUSE LLC
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
+# Permission is hereby granted, free of charge, to any person
+# obtaining a copy of this software and associated documentation files
+# (the "Software"), to deal in the Software without restriction,
+# including without limitation the rights to use, copy, modify, merge,
+# publish, distribute, sublicense, and/or sell copies of the Software,
+# and to permit persons to whom the Software is furnished to do so,
+# subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
 #
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-
-echo "███████████████████████████████████████████████████████████████"
-echo "█                                                             █"
-echo "█  containment-rpm-pxe: Turn your KIWI PXE images into RPMs   █"
-echo "█        https://github.com/openSUSE/container-rpm-pxe        █"
-echo "█                                                             █"
-echo "███████████████████████████████████████████████████████████████"
-
-get_xml_data() {
-  echo $(xmllint --xpath "${1}" ${2} | sed ':a;N;$!ba;s/\n/\\n/g' | sed 's/\//\\\//g')
-}
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+# BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+# ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
 : ${TOPDIR:=/usr/src/packages}
 
-TARGET_DIR=${TOPDIR}/KIWI
-RPM_SOURCE_DIR=${TOPDIR}/SOURCES
-FILES_DIR=/usr/lib/build
+kiwi_dir="${TOPDIR}"/KIWI
+rpm_source_dir="${TOPDIR}"/SOURCES
+files_dir=/usr/lib/build
+properties_xml="${rpm_source_dir}"/rpm-properties.xml
 
-cd $TARGET_DIR
 
-echo "INFO: Looking for an image..."
-SOURCE=$(find . -exec basename {} \;|grep -E '^.+\.tar\.[^\.]+$';true)
-if [ "${SOURCE}" == "" ]; then
-  echo "ERROR: No image files found!"
+get_xml_data() {
+    local xpath="${1}"
+    local xml_file="${2}"
+    echo $(xmllint --xpath "${xpath}" "${xml_file}")
+}
+
+find_source() {
+    ls *.install.tar *.tar.xz 2> /dev/null || true
+}
+
+parse_source() {
+    local -n _cfg="${1}"
+    local source="${2}"
+    set -- $(echo "${source}" | sed -r 's/([^\.]+)\.([^-]+)-([^-]+)-(.*)/\1 \2 \3 \4/')
+    _cfg['name']="${1}"
+    _cfg['arch']="${2}"
+    _cfg['version']="${3}"
+    # Include the Build prefix in the release
+    _cfg['release']=$(echo "${4}" | sed -r 's/.*(Build[0-9]+\.[0-9]+).*/\1/')
+
+    _cfg['year']=$(date +%Y)
+
+    case "${source}" in
+	*.tar.xz)
+	    _cfg['type']='pxe'
+	    _cfg['sourcekernelboot']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}-*.kernel"
+	    _cfg['sourceinitrdboot']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
+	    _cfg['sourceimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}"
+	    ;;
+	*.install.tar)
+	    _cfg['type']='oem'
+	    _cfg['sourcekernelboot']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
+	    _cfg['sourceinitrdboot']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
+	    _cfg['sourceimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
+	    ;;
+	*)
+	    echo "ERROR: Unkown image type for ${source}"
+	    exit 1
+	    ;;
+    esac
+    _cfg['sourcemd5image']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.md5"
+
+    # It could not apply, but is good to have a sane default here, the
+    # spec file macro will skip over those values
+    _cfg['sourcekernelimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
+    _cfg['sourceinitrdimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
+    # https://github.com/OSInside/kiwi/issues/1346
+    _cfg['sourcebootoptions']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
+    _cfg['sourceappend']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
+}
+
+untar_source() {
+    local source="${1}"
+    local type="${source##*.}"
+    case $type in
+	tar)
+	    tar -xvf "${source}"
+	    ;;
+	xz)
+	    tar -xJvf "${source}"
+	    ;;
+	*)
+	    echo "ERROR: Do not know how to decompress ${source}"
+	    exit 1
+	    ;;
+    esac
+}
+
+parse_properties_xml() {
+    local -n _cfg="${1}"
+    local properties_xml="${2}"
+    for key in summary description license licensefile group url \
+		       provides excludearches targetboot kernelboot \
+		       initrdboot ignoreimage targetimage image \
+		       md5image kernelimage initrdimage bootoptions \
+		       append; do
+	_cfg[$key]=$(get_xml_data "string(//props/$key)" ${properties_xml})
+    done
+
+    declare -A default=(
+	['licensefile']='LICENSE'
+	['targetboot']="/srv/${_cfg[name]}"
+	['kernelboot']='linux'
+	['initrdboot']='initrd'
+	['ignoreimage']='false'
+	['image']="${_cfg[sourceimage]}"
+	['md5image']="${_cfg[sourcemd5image]}"
+	['kernelimage']="${_cfg[sourcekernelimage]}"
+	['initrdimage']="${_cfg[sourceinitrdimage]}"
+	# https://github.com/OSInside/kiwi/issues/1346
+	['bootoptions']="${_cfg[name]}-${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
+	['append']="${_cfg[sourceappend]}"
+    )
+    for key in "${!_cfg[@]}"; do
+	if [ "${_cfg[$key]}" == "''" -o -z "${_cfg[$key]}" ]; then
+	    _cfg[$key]="${default[$key]-}"
+	fi
+    done
+
+    # Some defaults depend on other default values, so we need a last
+    # iteration to resolve them
+    declare -A default=(
+	["targetimage"]="${_cfg[targetboot]}/image"
+    )
+    for key in "${!_cfg[@]}"; do
+	if [ "${_cfg[$key]}" == "''" -o -z "${_cfg[$key]}" ]; then
+	    _cfg[$key]="${default[$key]-}"
+	fi
+    done
+}
+
+expand_cfg() {
+    local -n _cfg="${1}"
+    if [ "${_cfg[url]}" != "''" -o ! -z "${_cfg[url]}" ]; then
+	_cfg['url']="URL:            ${_cfg[url]}"
+    fi
+
+    local provides=""
+    for provide in "${_cfg[provides]}"; do
+	[ -z "${provide}" ] && continue
+	provides="${provides}Provides:       ${provide}\n"
+    done
+    _cfg['provides']="${provides}"
+
+    local excludearches=""
+    for arch in "${_cfg[excludearches]}"; do
+	[ -z "${arch}" ] && continue
+	excludearches="${excludearches}ExcludeArch:    ${arch}\n"
+    done
+    _cfg['excludearches']="${excludearches}"
+
+    if [ "${cfg[ignoreimage]}" == "true" ]; then
+	cfg['ignoreimage']=1
+    else
+	cfg['ignoreimage']=0
+    fi
+}
+
+
+echo '██████████████████████████████████████████████████████████████'
+echo '█                                                            █'
+echo '█  containment-rpm-pxe: Turn your KIWI PXE images into RPMs  █'
+echo '█       https://github.com/openSUSE/container-rpm-pxe        █'
+echo '█                                                            █'
+echo '██████████████████████████████████████████████████████████████'
+
+cd "${kiwi_dir}"
+
+echo 'INFO: Looking for a tar file from KIWI ...'
+source=$(find_source)
+if [ -z "${source}" ]; then
+  echo 'ERROR: No tar file from KIWI found!'
   exit 1
-elif [ $(echo "${SOURCE}"|wc -l) -gt 1 ]; then
-  echo "ERROR: More than one image file found!"
+elif [ $(echo "${source}" | wc -l) -gt 1 ]; then
+  echo 'ERROR: More than one tar file found!'
   exit 1
 fi
-echo "INFO: Image found at ${SOURCE}"
+echo "INFO: tar file from KIWI found at ${source}"
 
-# extract name and version from the source tarball
-set -- $(echo $SOURCE | sed -r 's/([^\.]+)\.([^-]+)-([^-]+).([^-]+)-?(cpio)?.tar\.(.+)/\1 \2 \3 \4 \5 \6/')
-NAME="${1}"
-ARCH="${2}"
-VERSION="${3}"
-RELEASE="${4}"
-TYPE="${5}"
-set +u
-if [ -z ${6} ]; then
-  EXTENSION=${TYPE}
-  TYPE="pxe"
-else
-  EXTENSION="${6}"
-fi
-set -u
-
-# Some other required variables
-RELEASE=$(date +%Y%m%d%H%M%S)
-YEAR=$(date +%Y)
-
-# Read properties from rpm-properties.xml
-PROPERTIES_XML="${RPM_SOURCE_DIR}/rpm-properties.xml"
-if [ ! -f ${PROPERTIES_XML} ]; then
-  echo "ERROR: No ${PROPERTIES_XML} file. Make sure you have one in your package"
+# Read the properties from source and XML files
+declare -A cfg
+parse_source cfg "${source}"
+if [ ! -f "${properties_xml}" ]; then
+  echo "ERROR: No ${properties_xml} file. Make sure you have one in your package"
   exit 1
 fi
-SUMMARY=$(get_xml_data "string(//props/summary)" ${PROPERTIES_XML})
-DESCRIPTION=$(get_xml_data "string(//props/description)" ${PROPERTIES_XML})
-LICENSE=$(get_xml_data "string(//props/license)" ${PROPERTIES_XML})
-URL=$(get_xml_data "string(//props/url)" ${PROPERTIES_XML})
-GROUP=$(get_xml_data "string(//props/group)" ${PROPERTIES_XML})
-PROVIDES=$(get_xml_data "string(//props/provides)" ${PROPERTIES_XML})
-EXCLUDEARCHES=$(get_xml_data "string(//props/excludearches)" ${PROPERTIES_XML})
+parse_properties_xml cfg "${properties_xml}"
 
-# Print values to stdout
-echo "=========================================="
-echo "source: ${SOURCE}"
-echo "name: ${NAME}"
-echo "version: ${VERSION}"
-echo "release: ${RELEASE}"
-echo "type: ${TYPE}"
-echo "extension: ${EXTENSION}"
-echo "=========================================="
-echo "summary: ${SUMMARY}"
-echo "description: ${DESCRIPTION}"
-echo "license: ${LICENSE}"
-echo "url: ${URL}"
-echo "group: ${GROUP}"
-echo "provides: ${PROVIDES}"
-echo "excludeArches: ${EXCLUDEARCHES}"
-echo "=========================================="
+echo '=========================================='
+echo "- source: ${source}"
+echo '=========================================='
+for item in "${!cfg[@]}"; do
+    echo "- ${item}: ${cfg[$item]}"
+done
+echo '=========================================='
 
+echo "INFO: Linking the ${source} into ${rpm_source_dir}"
+ln "${source}" "${rpm_source_dir}"
 
-echo "INFO: Uncompressing image created by KIWI..."
-if [ "${EXTENSION}" == 'bz2' ]; then
-  tar -xvjf ${SOURCE}
-elif  [ "${EXTENSION}" == 'xz' ]; then
-  tar -xvJf ${SOURCE}
-else
-  echo "ERROR: Unrecognized compression format!"
-  exit 1
-fi
+echo 'INFO: Generating SPEC ...'
+expand_cfg cfg
+sed -e "s/__NAME__/${cfg[name]}/g" \
+    -e "s/__YEAR__/${cfg[year]}/g" \
+    -e "s/__TYPE__/${cfg[type]}/g" \
+    -e "s/__IGNORE_IMAGE__/${cfg[ignoreimage]}/g" \
+    -e "s/__VERSION__/${cfg[version]}/g" \
+    -e "s/__RELEASE__/${cfg[release]}/g" \
+    -e "s|__SUMMARY__|${cfg[summary]}|g" \
+    -e "s/__LICENSE__/${cfg[license]}/g" \
+    -e "s|__GROUP__|${cfg[group]}|g" \
+    -e "s|__URL__|${cfg[url]}|g" \
+    -e "s|__SOURCE__|${source}|g" \
+    -e "s/__LICENSE_FILE__/${cfg[licensefile]}/g" \
+    -e "s/__EXCLUDE_ARCHS__/${cfg[excludearches]}/g" \
+    -e "s/__PROVIDES__/${cfg[provides]}/g" \
+    -e "s|__DESCRIPTION__|${cfg[description]}|g" \
+    -e "s|__TARGET_BOOT__|${cfg[targetboot]}|g" \
+    -e "s/__SOURCE_KERNEL_BOOT__/${cfg[sourcekernelboot]}/g" \
+    -e "s/__KERNEL_BOOT__/${cfg[kernelboot]}/g" \
+    -e "s/__SOURCE_INITRD_BOOT__/${cfg[sourceinitrdboot]}/g" \
+    -e "s/__INITRD_BOOT__/${cfg[initrdboot]}/g" \
+    -e "s|__TARGET_IMAGE__|${cfg[targetimage]}|g" \
+    -e "s/__SOURCE_IMAGE__/${cfg[sourceimage]}/g" \
+    -e "s/__IMAGE__/${cfg[image]}/g" \
+    -e "s/__SOURCE_MD5_IMAGE__/${cfg[sourcemd5image]}/g" \
+    -e "s/__MD5_IMAGE__/${cfg[md5image]}/g" \
+    -e "s/__SOURCE_KERNEL_IMAGE__/${cfg[sourcekernelimage]}/g" \
+    -e "s/__KERNEL_IMAGE__/${cfg[kernelimage]}/g" \
+    -e "s/__SOURCE_INITRD_IMAGE__/${cfg[sourceinitrdimage]}/g" \
+    -e "s/__INITRD_IMAGE__/${cfg[initrdimage]}/g" \
+    -e "s/__SOURCE_BOOTOPTIONS__/${cfg[sourcebootoptions]}/g" \
+    -e "s/__BOOTOPTIONS__/${cfg[bootoptions]}/g" \
+    -e "s/__SOURCE_APPEND__/${cfg[sourceappend]}/g" \
+    -e "s/__APPEND__/${cfg[append]}/g" \
+    < ${files_dir}/image.spec.in \
+    > ${files_dir}/image.spec
 
-echo "INFO: Detecting initrd..."
-if [ "${TYPE}" == "cpio" ]; then
-  echo "INFO: cpio image, converting initrd..."
-  INITRDGZ=`ls ${NAME}.*-${VERSION}.gz | head -1`
-  INITRD=${INITRDGZ%.gz}.xz
-  gzip -cd ${INITRDGZ} | xz --check=crc32 -c9 > ${INITRD}
-else
-  INITRD=`ls ${NAME}.*-${VERSION}.initrd.xz`
-fi
-INITRDBASE=$(basename $INITRD)
-echo "INFO: initrd detected at ${INITRDBASE}"
+echo 'INFO: Adding changelog to the SPEC ...'
+/.build/changelog2spec --target rpm --file "${rpm_source_dir}"/"${cfg[name]}".changes >> "${files_dir}"/image.spec
+echo 'INFO: SPEC to be used:'
+echo '=========================================='
+cat "${files_dir}"/image.spec
+echo '=========================================='
 
-echo "INFO: Detecting kernel..."
-if [ "${TYPE}" == "cpio" ]; then
-  KERNEL=`ls ${NAME}.*-${VERSION}.kernel.*-default | head -1`
-else 
-  KERNEL=`ls ${NAME}.*-${VERSION}-*-default.kernel | head -1`
-fi
-KERNELBASE=$(basename $KERNEL)
-echo "INFO: Kernel at ${KERNELBASE}"
+echo 'INFO: Building RPM packages...'
+rpmbuild -ba ${files_dir}/image.spec
 
-echo "INFO: Standarizing kernel and initrd filenames and moving them to ${RPM_SOURCE_DIR}"
-mv ${KERNELBASE} ${RPM_SOURCE_DIR}/vmlinuz0
-mv ${INITRD} ${RPM_SOURCE_DIR}/initrd0.img
-
-echo "INFO: Generating SPEC..."
-if [ "${URL}" != "" ]; then
-  URL="Url:            ${URL}"
-fi
-if [ "${PROVIDES}" != "" ]; then
-  RPM_PROVIDES=""
-  for PROVIDE in ${PROVIDES}; do
-    RPM_PROVIDES="${RPM_PROVIDES}Provides:       ${PROVIDE}\n"
-  done
-fi
-if [ "${EXCLUDEARCHES}" != "" ]; then
-  RPM_EXCLUDEARCHES=""
-  for EXCLUDEARCH in ${EXCLUDEARCHES}; do
-    RPM_EXCLUDEARCHES="${RPM_EXCLUDEARCHES}ExcludeArch:    ${EXCLUDEARCH}\n"
-  done
-fi
-sed -e "s/__NAME__/${NAME}/g" \
-    -e "s/__SUMMARY__/${SUMMARY}/g" \
-    -e "s/__DESCRIPTION__/${DESCRIPTION}/g" \
-    -e "s/__LICENSE__/${LICENSE}/g" \
-    -e "s/__URL__/${URL}/g" \
-    -e "s/__GROUP__/${GROUP}/g" \
-    -e "s/__VERSION__/${VERSION}/g" \
-    -e "s/__RELEASE__/${RELEASE}/g" \
-    -e "s/__PROVIDES__/${RPM_PROVIDES}/g" \
-    -e "s/__EXCLUDEARCH__/${RPM_EXCLUDEARCHES}/g" \
-    -e "s/__YEAR__/${YEAR}/g" \
-    < ${FILES_DIR}/image.spec.in \
-    > ${FILES_DIR}/image.spec
-echo "INFO: Adding changelog to the SPEC..."
-/.build/changelog2spec --target rpm --file ${RPM_SOURCE_DIR}/${NAME}.changes >> ${FILES_DIR}/image.spec
-echo "INFO: SPEC to be used:"
-echo "=========================================="
-cat ${FILES_DIR}/image.spec
-echo "=========================================="
-
-echo "INFO: Building RPM packages..."
-rpmbuild -ba ${FILES_DIR}/image.spec
-
-# required for the BS to find the rpm, because it is
-# a "non-standard result file for KIWI"
-mkdir -p ${TOPDIR}/OTHER
-ARCH_RPM="${TOPDIR}/RPMS/noarch/${NAME}-${VERSION}-${RELEASE}.noarch.rpm"
-SRC_RPM="${TOPDIR}/SRPMS/${NAME}-${VERSION}-${RELEASE}.src.rpm"
-echo "INFO: Copying ${ARCH_RPM} to ${TOPDIR}/OTHER/"
-mv ${ARCH_RPM} ${TOPDIR}/OTHER/
-echo "INFO: Copying ${SRC_RPM} to ${TOPDIR}/OTHER/"
-mv ${SRC_RPM} ${TOPDIR}/OTHER/
+# Required in OBS / IBS to find the RPM, because it is a "non-standard
+# result file for KIWI"
+mkdir -p "${TOPDIR}"/OTHER
+arch_rpm="${TOPDIR}/RPMS/noarch/${cfg[name]}-${cfg[version]}-${cfg[release]}.noarch.rpm"
+src_rpm="${TOPDIR}/SRPMS/${cfg[name]}-${cfg[version]}-${cfg[release]}.src.rpm"
+echo "INFO: Moving ${arch_rpm} to ${TOPDIR}/OTHER/"
+mv "${arch_rpm}" "${TOPDIR}"/OTHER/
+echo "INFO: Moving ${src_rpm} to ${TOPDIR}/OTHER/"
+mv "${src_rpm}" "${TOPDIR}"/OTHER/

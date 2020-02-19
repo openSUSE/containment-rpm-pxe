@@ -1,9 +1,47 @@
 <props>
-  <summary>Mandatory, one line</summary>
-  <description>Mandatory, it can be multiline</description>
-  <license>Mandatory, one line</license>
-  <group>Mandatory, one line</group>
-  <url>Optional, one line</url>
-  <provides>Optional, one line, separate with spaces if more than one</provides>
-  <excludearches>Optional, one line, separate with spaces if more than one</excludearches>
+  <!-- Mandatory, one line -->
+  <summary>PXE image for openSUSE with salt-minion</summary>
+  <!-- Mandatory, it can be multiline -->
+  <description>
+    PXE image generated as a OEM Kiwi image.  Contains PXE kernel and
+    initrd, and a boot image.
+  </description>
+  <!-- Mandatory, one line. SPDX compatible -->
+  <license>GPL-3.0-or-later</license>
+  <!-- Optional, one line, default value: LICENSE -->
+  <licensefile>LICENSE</licensefile>
+  <!-- Mandatory, one line -->
+  <group>System/Management</group>
+  <!-- Optional, one line -->
+  <url>http://opensuse.org</url>
+  <!-- Optional, one line, separate with spaces if more than one -->
+  <provides>pxe-opensuse-image</provides>
+  <!-- Optional, one line, separate with spaces if more than one -->
+  <excludearches>aarch64</excludearches>
+
+  <!-- Optional, one line, default: /srv/${name} -->
+  <targetboot>/srv/tftpboot/boot</targetboot>
+  <!-- Optional, one line, default: linux -->
+  <kernelboot>linux</kernelboot>
+  <!-- Optional, one line, default: initrd -->
+  <initrdboot>initrd</initrdboot>
+
+  <!-- Optional, if "true" the image will not be packaged -->
+  <ignoreimage>false</ignoreimage>
+
+  <!-- Optional, one line, default: ${targetboot}/image -->
+  <targetimage>/srv/tftpboot/image</targetimage>
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.xz -->
+  <image>pxe-opensuse-image.xz</image>
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.md5 -->
+  <md5image>pxe-opensuse-image.md5</md5image>
+
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.kernel -->
+  <kernelimage>pxe-opensuse-image.kernel</kernelimage>
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.initrd -->
+  <initrdimage>pxe-opensuse-image.initrd</initrdimage>
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.config.bootoptions -->
+  <bootoptions>pxe-opensuse-image.config.bootoptions</bootoptions>
+  <!-- Optional, one line, default: ${name}-${arch}-${version}.append -->
+  <append>pxe-opensuse-image.config.append</append>
 </props>
