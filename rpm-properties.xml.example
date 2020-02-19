@@ -1,0 +1,9 @@
+<props>
+  <summary>Mandatory, one line</summary>
+  <description>Mandatory, it can be multiline</description>
+  <license>Mandatory, one line</license>
+  <group>Mandatory, one line</group>
+  <url>Optional, one line</url>
+  <provides>Optional, one line, separate with spaces if more than one</provides>
+  <excludearches>Optional, one line, separate with spaces if more than one</excludearches>
+</props>
