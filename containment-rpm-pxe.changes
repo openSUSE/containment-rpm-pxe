@@ -1,11 +1,16 @@
 -------------------------------------------------------------------
+Fri Feb 28 15:51:21 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
+
+- Update to version 0.2.1:
+  * Relax the name of asset
+
+-------------------------------------------------------------------
 Thu Feb 27 14:13:41 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
 
 - Update to version 0.2:
   * Support old PXE and new OEM PXE Kiwi images
   * Be explicit on bash dependency
   * Add example for rpm-properties.xml
-  * spec-clean the spec.in file
 - Add _service to fetch code from openSUSE's github
 - Require perl-TimeDate for changelog2spec call and fdupes
 

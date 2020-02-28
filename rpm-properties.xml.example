@@ -31,17 +31,17 @@
 
   <!-- Optional, one line, default: ${targetboot}/image -->
   <targetimage>/srv/tftpboot/image</targetimage>
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.xz -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.xz -->
   <image>pxe-opensuse-image.xz</image>
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.md5 -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.md5 -->
   <md5image>pxe-opensuse-image.md5</md5image>
 
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.kernel -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.kernel -->
   <kernelimage>pxe-opensuse-image.kernel</kernelimage>
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.initrd -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.initrd -->
   <initrdimage>pxe-opensuse-image.initrd</initrdimage>
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.config.bootoptions -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.config.bootoptions -->
   <bootoptions>pxe-opensuse-image.config.bootoptions</bootoptions>
-  <!-- Optional, one line, default: ${name}-${arch}-${version}.append -->
+  <!-- Optional, one line, default: ${name}.${arch}-${version}.append -->
   <append>pxe-opensuse-image.config.append</append>
 </props>
