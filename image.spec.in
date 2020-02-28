@@ -1,7 +1,7 @@
 #
 # spec file for package __NAME__
 #
-# Copyright (c) __YEAR__ SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (c) __YEAR__ SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -12,50 +12,66 @@
 # license that conforms to the Open Source Definition (Version 1.9)
 # published by the Open Source Initiative.
 
-# Please submit bugfixes or comments via http://bugs.opensuse.org/
-#
-# needsrootforbuild
-# needsbinariesforbuild
+# Please submit bugfixes or comments via https://bugs.opensuse.org/
 
-__URL__
+# type = {pxe, oem}
+%define type __TYPE__
+# ignore_image = {0, 1}, where 1 is evaluated as True
+%define ignore_image __IGNORE_IMAGE__
+
 Name:           __NAME__
-Summary:        __SUMMARY__
 Version:        __VERSION__
 Release:        __RELEASE__
-Group:          __GROUP__
+Summary:        __SUMMARY__
 License:        __LICENSE__
-Source0:        vmlinuz0
-Source1:        initrd0.img
-Source2:        license.txt
-BuildRoot:      %{_tmppath}/%{name}-%{version}-build
+Group:          __GROUP__
+__URL__
+Source:         __SOURCE__
+Source1:        __LICENSE_FILE__
+BuildRequires:  fdupes
+BuildRequires:  perl-TimeDate
 BuildArch:      noarch
-__EXCLUDEARCH__
+__EXCLUDE_ARCHS__
 __PROVIDES__
 
 %description
 __DESCRIPTION__
 
 %prep
-%setup -T -c %name
+%setup -q -c %{name}
 
 %build
-# empty no compile job
 
 %install
-cp %{SOURCE0} .
 cp %{SOURCE1} .
-cp %{SOURCE2} .
-mkdir -p %{buildroot}/srv/pxe-default-image
-install -p -m 644 vmlinuz0 %{buildroot}/srv/pxe-default-image/vmlinuz0
-install -p -m 644 initrd0.img %{buildroot}/srv/pxe-default-image/initrd0.img
 
-%clean
-rm -rf $RPM_BUILD_ROOT
+mkdir -p %{buildroot}__TARGET_BOOT__
+install -p -m 644 __SOURCE_KERNEL_BOOT__ %{buildroot}__TARGET_BOOT__/__KERNEL_BOOT__
+install -p -m 644 __SOURCE_INITRD_BOOT__ %{buildroot}__TARGET_BOOT__/__INITRD_BOOT__
+
+%if %{ignore_image} == 0
+mkdir -p %{buildroot}__TARGET_IMAGE__
+install -p -m 644 __SOURCE_IMAGE__ %{buildroot}__TARGET_IMAGE__/__IMAGE__
+install -p -m 644 __SOURCE_MD5_IMAGE__ %{buildroot}__TARGET_IMAGE__/__MD5_IMAGE__
+%if %{type} == oem
+install -p -m 644 __SOURCE_KERNEL_IMAGE__ %{buildroot}__TARGET_IMAGE__/__KERNEL_IMAGE__
+install -p -m 644 __SOURCE_INITRD_IMAGE__ %{buildroot}__TARGET_IMAGE__/__INITRD_IMAGE__
+install -p -m 644 __SOURCE_BOOTOPTIONS__ %{buildroot}__TARGET_IMAGE__/__BOOTOPTIONS__
+install -p -m 644 __SOURCE_APPEND__ %{buildroot}__TARGET_IMAGE__/__APPEND__
+%endif
+%endif
+
+# If the kernel boot and image are the same, fix the link
+%fdupes -s %{buildroot}
 
 %files
 %defattr(644,root,root)
-%doc license.txt
-%dir %attr(755, root, root) /srv/pxe-default-image
-%attr(644, root, root) /srv/pxe-default-image/*
+%license __LICENSE_FILE__
+%dir %attr(755, root, root) __TARGET_BOOT__
+%attr(644, root, root) __TARGET_BOOT__/*
+%if %{ignore_image} == 0
+%dir %attr(755, root, root) __TARGET_IMAGE__
+%attr(644, root, root) __TARGET_IMAGE__/*
+%endif
 
 %changelog
