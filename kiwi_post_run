@@ -61,24 +61,32 @@ parse_source() {
 	    ;;
 	*.install.tar)
 	    _cfg['type']='oem'
-	    _cfg['sourcekernelboot']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
-	    _cfg['sourceinitrdboot']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
-	    _cfg['sourceimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
+            # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
+	    _cfg['sourcekernelboot']="pxeboot*.kernel"
+            # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
+	    _cfg['sourceinitrdboot']="pxeboot*.initrd.xz"
+            # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
+	    _cfg['sourceimage']="${_cfg[name]}*.xz"
 	    ;;
 	*)
 	    echo "ERROR: Unkown image type for ${source}"
 	    exit 1
 	    ;;
     esac
-    _cfg['sourcemd5image']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.md5"
+    # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.md5"
+    _cfg['sourcemd5image']="${_cfg[name]}*.md5"
 
-    # It could not apply, but is good to have a sane default here, the
-    # spec file macro will skip over those values
-    _cfg['sourcekernelimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
-    _cfg['sourceinitrdimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
+    # It could not apply, but is good to have a sane defaults here,
+    # the spec file macro will skip over those values
+    # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
+    _cfg['sourcekernelimage']="${_cfg[name]}*.kernel"
+    # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
+    _cfg['sourceinitrdimage']="${_cfg[name]}*.initrd"
     # https://github.com/OSInside/kiwi/issues/1346
-    _cfg['sourcebootoptions']="pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
-    _cfg['sourceappend']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
+    # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
+    _cfg['sourcebootoptions']="*.config.bootoptions"
+    # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
+    _cfg['sourceappend']="${_cfg[name]}*.append"
 }
 
 untar_source() {
@@ -116,13 +124,21 @@ parse_properties_xml() {
 	['initrdboot']='initrd'
 	['ignoreimage']='false'
 	['image']="${_cfg[sourceimage]}"
-	['md5image']="${_cfg[sourcemd5image]}"
-	['kernelimage']="${_cfg[sourcekernelimage]}"
-	['initrdimage']="${_cfg[sourceinitrdimage]}"
+	# "${_cfg[sourcemd5image]}"
+	['md5image']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.md5"
+	# "${_cfg[sourcekernelimage]}"
+	['kernelimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
+	# "${_cfg[sourceinitrdimage]}"
+	['initrdimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
 	# https://github.com/OSInside/kiwi/issues/1346
 	['bootoptions']="${_cfg[name]}-${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
-	['append']="${_cfg[sourceappend]}"
+	# "${_cfg[sourceappend]}"
+	['append']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
     )
+    if [ "${_cfg[type]}" == "oem" ]; then
+	_cfg['image']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
+    fi
+
     for key in "${!_cfg[@]}"; do
 	if [ "${_cfg[$key]}" == "''" -o -z "${_cfg[$key]}" ]; then
 	    _cfg[$key]="${default[$key]-}"
