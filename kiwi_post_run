@@ -159,7 +159,7 @@ parse_properties_xml() {
 
 expand_cfg() {
     local -n _cfg="${1}"
-    if [ "${_cfg[url]}" != "''" -o ! -z "${_cfg[url]}" ]; then
+    if [ "${_cfg[url]}" != "''" -a ! -z "${_cfg[url]}" ]; then
 	_cfg['url']="URL:            ${_cfg[url]}"
     fi
 

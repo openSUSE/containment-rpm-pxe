@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Mon Mar  2 16:18:11 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
+
+- Update to version 0.2.2:
+  * Fix issue when URL is empty
+
+-------------------------------------------------------------------
 Fri Feb 28 15:51:21 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
 
 - Update to version 0.2.1:
