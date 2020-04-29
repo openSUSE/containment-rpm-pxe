@@ -56,7 +56,7 @@ install -p -m 644 __SOURCE_MD5_IMAGE__ %{buildroot}__TARGET_IMAGE__/__MD5_IMAGE_
 %if %{type} == oem
 install -p -m 644 __SOURCE_KERNEL_IMAGE__ %{buildroot}__TARGET_IMAGE__/__KERNEL_IMAGE__
 install -p -m 644 __SOURCE_INITRD_IMAGE__ %{buildroot}__TARGET_IMAGE__/__INITRD_IMAGE__
-# install -p -m 644 __SOURCE_BOOTOPTIONS__ %{buildroot}__TARGET_IMAGE__/__BOOTOPTIONS__
+[ -e __SOURCE_BOOTOPTIONS__ ] && install -p -m 644 __SOURCE_BOOTOPTIONS__ %{buildroot}__TARGET_IMAGE__/__BOOTOPTIONS__
 install -p -m 644 __SOURCE_APPEND__ %{buildroot}__TARGET_IMAGE__/__APPEND__
 %endif
 %endif

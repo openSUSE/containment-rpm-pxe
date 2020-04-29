@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Apr 29 08:33:50 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
+
+- Update to version 0.2.3:
+  * A change in KIWI requires the file config.bootoptions
+
+-------------------------------------------------------------------
 Mon Mar  2 16:18:11 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
 
 - Update to version 0.2.2:
