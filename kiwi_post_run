@@ -82,9 +82,8 @@ parse_source() {
     _cfg['sourcekernelimage']="${_cfg[name]}*.kernel"
     # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
     _cfg['sourceinitrdimage']="${_cfg[name]}*.initrd"
-    # https://github.com/OSInside/kiwi/issues/1346
-    # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
-    _cfg['sourcebootoptions']="*.config.bootoptions"
+    # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
+    _cfg['sourcebootoptions']="${_cfg[name]}*.config.bootoptions"
     # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
     _cfg['sourceappend']="${_cfg[name]}*.append"
 }
