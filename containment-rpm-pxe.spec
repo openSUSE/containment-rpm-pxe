@@ -23,7 +23,7 @@ Summary:        Wraps OBS/kiwi-built PXE images in rpms.
 License:        MIT
 Group:          System/Management
 URL:            https://github.com/openSUSE/%{name}
-Source:         %{name}-%{version}.tar.gz
+Source:         https://github.com/openSUSE/containment-rpm-pxe/archive/%{version}.tar.gz
 BuildRequires:  filesystem
 Requires:       fdupes
 Requires:       libxml2-tools
