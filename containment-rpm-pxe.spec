@@ -17,7 +17,7 @@
 
 
 Name:           containment-rpm-pxe
-Version:        0.2.3
+Version:        0.2.4
 Release:        0
 Summary:        Wraps OBS/kiwi-built PXE images in rpms.
 License:        MIT

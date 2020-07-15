@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Jul 15 15:21:52 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
+
+- Update to version 0.2.4:
+  * Fix name for config.bootoptions file
+
+-------------------------------------------------------------------
 Wed Apr 29 08:33:50 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
 
 - Update to version 0.2.3:
