@@ -129,8 +129,7 @@ parse_properties_xml() {
 	['kernelimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
 	# "${_cfg[sourceinitrdimage]}"
 	['initrdimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
-	# https://github.com/OSInside/kiwi/issues/1346
-	['bootoptions']="${_cfg[name]}-${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
+	['bootoptions']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.config.bootoptions"
 	# "${_cfg[sourceappend]}"
 	['append']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
     )
