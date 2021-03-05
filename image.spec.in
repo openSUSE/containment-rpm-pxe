@@ -38,13 +38,22 @@ __PROVIDES__
 __DESCRIPTION__
 
 %prep
+%if %{type} == raw
+%setup -T -c %{name}
+cp %{S:0} .
+%else
 %setup -q -c %{name}
+%endif
 
 %build
 
 %install
 cp %{SOURCE1} .
 
+%if %{type} == raw
+mkdir -p %{buildroot}__TARGET_IMAGE__
+install -p -m 644 __SOURCE_IMAGE__ %{buildroot}__TARGET_IMAGE__/__IMAGE__
+%else
 mkdir -p %{buildroot}__TARGET_BOOT__
 install -p -m 644 __SOURCE_KERNEL_BOOT__ %{buildroot}__TARGET_BOOT__/__KERNEL_BOOT__
 install -p -m 644 __SOURCE_INITRD_BOOT__ %{buildroot}__TARGET_BOOT__/__INITRD_BOOT__
@@ -60,6 +69,7 @@ install -p -m 644 __SOURCE_INITRD_IMAGE__ %{buildroot}__TARGET_IMAGE__/__INITRD_
 install -p -m 644 __SOURCE_APPEND__ %{buildroot}__TARGET_IMAGE__/__APPEND__
 %endif
 %endif
+%endif
 
 # If the kernel boot and image are the same, fix the link
 %fdupes -s %{buildroot}
@@ -67,8 +77,10 @@ install -p -m 644 __SOURCE_APPEND__ %{buildroot}__TARGET_IMAGE__/__APPEND__
 %files
 %defattr(644,root,root)
 %license __LICENSE_FILE__
+%if %{type} != raw
 %dir %attr(755, root, root) __TARGET_BOOT__
 %attr(644, root, root) __TARGET_BOOT__/*
+%endif
 %if %{ignore_image} == 0
 %dir %attr(755, root, root) __TARGET_IMAGE__
 %attr(644, root, root) __TARGET_IMAGE__/*

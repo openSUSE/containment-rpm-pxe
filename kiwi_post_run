@@ -37,7 +37,10 @@ get_xml_data() {
 }
 
 find_source() {
-    ls *.install.tar *.tar.xz 2> /dev/null || true
+    # Kiwi can generate both files, so look for *.raw.xz only
+    # if *.install.tar does not exist
+    #
+    ls *.install.tar *.tar.xz 2> /dev/null || ls *.raw.xz || true
 }
 
 parse_source() {
@@ -67,6 +70,12 @@ parse_source() {
 	    _cfg['sourceinitrdboot']="pxeboot*.initrd.xz"
             # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
 	    _cfg['sourceimage']="${_cfg[name]}*.xz"
+	    ;;
+	*.raw.xz)
+	    _cfg['type']='raw'
+	    _cfg['sourcekernelboot']=
+	    _cfg['sourceinitrdboot']=
+	    _cfg['sourceimage']="${_cfg[name]}*.raw.xz"
 	    ;;
 	*)
 	    echo "ERROR: Unkown image type for ${source}"
@@ -133,7 +142,7 @@ parse_properties_xml() {
 	# "${_cfg[sourceappend]}"
 	['append']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.append"
     )
-    if [ "${_cfg[type]}" == "oem" ]; then
+    if [ "${_cfg[type]}" == "oem" -o "${_cfg[type]}" == "raw" ]; then
 	_cfg['image']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
     fi
 
