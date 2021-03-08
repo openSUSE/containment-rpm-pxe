@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Mon Mar  8 12:06:24 UTC 2021 - Vladimir Nadvornik <nadvornik@suse.com>
+
+- Update to version 0.2.5:
+  * Add support for raw oem images
+
+-------------------------------------------------------------------
 Wed Jul 15 15:21:52 UTC 2020 - Alberto Planas Dominguez <aplanas@suse.com>
 
 - Update to version 0.2.4:
