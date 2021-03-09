@@ -40,7 +40,7 @@ find_source() {
     # Kiwi can generate both files, so look for *.raw.xz only
     # if *.install.tar does not exist
     #
-    ls *.install.tar *.tar.xz 2> /dev/null || ls *.raw.xz || true
+    (ls *.install.tar || ls *.tar.xz || ls *.raw.xz || true ) 2> /dev/null
 }
 
 parse_source() {
