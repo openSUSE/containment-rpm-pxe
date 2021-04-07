@@ -1,7 +1,7 @@
 #
 # spec file for package containment-rpm-pxe
 #
-# Copyright (c) 2020 SUSE LLC
+# Copyright (c) 2021 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -17,7 +17,7 @@
 
 
 Name:           containment-rpm-pxe
-Version:        0.2.5
+Version:        0.2.6
 Release:        0
 Summary:        Wraps OBS/kiwi-built PXE images in rpms.
 License:        MIT
@@ -28,6 +28,11 @@ BuildRequires:  filesystem
 Requires:       fdupes
 Requires:       libxml2-tools
 Requires:       perl-TimeDate
+%if 0%{?sle_version} >= 150100
+Requires:       kiwi-systemdeps-disk-images
+Requires:       kiwi-systemdeps-image-validation
+Requires:       kiwi-boot-descriptions
+%endif
 BuildArch:      noarch
 
 %description
