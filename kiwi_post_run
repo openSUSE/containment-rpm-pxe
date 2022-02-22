@@ -59,7 +59,7 @@ parse_source() {
 	*.tar.xz)
 	    _cfg['type']='pxe'
 	    _cfg['sourcekernelboot']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}-*.kernel"
-	    _cfg['sourceinitrdboot']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
+	    _cfg['sourceinitrdboot']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd"
 	    _cfg['sourceimage']="${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}"
 	    ;;
 	*.install.tar)
@@ -67,7 +67,7 @@ parse_source() {
             # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.kernel"
 	    _cfg['sourcekernelboot']="pxeboot*.kernel"
             # "pxeboot.${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.initrd.xz"
-	    _cfg['sourceinitrdboot']="pxeboot*.initrd.xz"
+	    _cfg['sourceinitrdboot']="pxeboot*.initrd"
             # "${_cfg[name]}.${_cfg[arch]}-${_cfg[version]}.xz"
 	    _cfg['sourceimage']="${_cfg[name]}*.xz"
 	    ;;

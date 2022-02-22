@@ -1,4 +1,11 @@
 -------------------------------------------------------------------
+Tue Feb 22 10:53:06 UTC 2022 - Julio González Gil <jgonzalez@suse.com>
+
+- Update to version 0.2.7:
+  * The initrd images do are not xz compreessed anymore after
+    python-kiwi 9.24.16
+
+-------------------------------------------------------------------
 Wed Apr  7 10:09:51 UTC 2021 - Julio González Gil <jgonzalez@suse.com>
 
 - Update to version 0.2.6:
