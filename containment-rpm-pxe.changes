@@ -2,7 +2,7 @@
 Tue Feb 22 10:53:06 UTC 2022 - Julio González Gil <jgonzalez@suse.com>
 
 - Update to version 0.2.7:
-  * The initrd images are not xz compreessed anymore after
+  * The initrd images are not xz compressed anymore after
     python-kiwi 9.24.16
 
 -------------------------------------------------------------------
